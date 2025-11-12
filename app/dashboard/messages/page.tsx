@@ -39,8 +39,10 @@ export default function MessagesPage() {
 
           if (membershipsError) throw membershipsError;
 
-          const groups = groupMemberships?.map((membership) => membership.groups).filter(Boolean) as Group[];
-          setUserGroups(groups || []);
+          const groups = (groupMemberships || [])
+            .map((membership) => membership.groups)
+            .filter((group): group is Group => group !== null && typeof group === 'object' && 'id' in group);
+          setUserGroups(groups);
 
         } catch (err: unknown) {
           setError(err instanceof Error ? err.message : 'Unknown error');
