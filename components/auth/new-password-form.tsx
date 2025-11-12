@@ -68,7 +68,7 @@ export function NewPasswordForm() {
       await updatePassword(data.password);
 
       if (userEmail) {
-        await fetch('/api/resend', {
+        await fetch('/api/v1/resend', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

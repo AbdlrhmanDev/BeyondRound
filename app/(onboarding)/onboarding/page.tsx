@@ -481,7 +481,7 @@ export default function OnboardingPage() {
     try {
       console.log('📤 Sending onboarding data:', onboardingData); // ✅ للتشخيص
       
-      const response = await fetch('/api/onboarding', {
+      const response = await fetch('/api/v1/onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -28,7 +28,7 @@ export default function GroupDetailsPage() {
 
     const fetchGroupDetails = async () => {
       try {
-        const response = await fetch(`/api/groups/${groupId}`);
+        const response = await fetch(`/api/v1/groups/${groupId}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

@@ -740,3 +740,6 @@ When adding new features, ensure:
 **Project Type**: Next.js 15 + Supabase Authentication Application
 **Architecture**: App Router (Server Components) + Client Components
 
+
+
+

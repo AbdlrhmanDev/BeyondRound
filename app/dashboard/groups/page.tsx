@@ -37,7 +37,7 @@ export default function GroupsPage() {
 
       try {
         // Fetch only groups where user is a member
-        const response = await fetch('/api/groups?filter=my-groups');
+        const response = await fetch('/api/v1/groups?filter=my-groups');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

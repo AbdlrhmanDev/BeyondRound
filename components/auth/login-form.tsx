@@ -11,7 +11,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { login } from '@/lib/utils/auth-helpers';
+import { login, getUserLoginInfo, getUserRedirectPath } from '@/lib/utils/auth-helpers';
 import { loginSchema } from '@/lib/utils/validation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
@@ -41,8 +41,31 @@ export function LoginForm() {
     setError(null);
 
     try {
-      await login(data.email, data.password);
-      router.push('/dashboard');
+      // 1. Login with Supabase
+      const authData = await login(data.email, data.password);
+      
+      if (!authData.user) {
+        throw new Error('Login failed - no user data returned');
+      }
+
+      // 2. Get user login info and redirect path
+      const { data: userInfo, error: userError } = await getUserLoginInfo(authData.user.id);
+      
+      if (userError) {
+        console.error('Failed to get user info:', userError);
+        // Fallback: try to get redirect path via RPC
+        const redirectPath = await getUserRedirectPath(authData.user.id);
+        router.push(redirectPath);
+        return;
+      }
+
+      // 3. Redirect based on user type
+      if (userInfo) {
+        router.push(userInfo.redirect_path);
+      } else {
+        // Fallback redirect
+        router.push('/dashboard');
+      }
     } catch (error) {
       setError(
         error instanceof Error ? error.message : 'Invalid email or password'

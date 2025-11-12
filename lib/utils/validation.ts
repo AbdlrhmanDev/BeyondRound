@@ -58,7 +58,7 @@ export const onboardingStep1Schema = z.object({
 
 export const onboardingStep2Schema = z.object({
   medicalSpecialties: z.array(z.string()).min(1, { message: 'Please select at least one specialty' }),
-  specialtyPreference: z.enum(['Same specialty preferred', 'Different specialty preferred', 'No preference']),
+  specialtyPreference: z.enum(['Same specialty preferred', 'Different specialties preferred', 'No preference']),
   careerStage: z.enum(['Medical Student', 'Resident (1st-2nd year)', 'Resident (3rd+ year)', 'Fellow', 'Attending/Consultant (0-5 years)', 'Attending/Consultant (5+ years)', 'Private Practice', 'Academic Medicine', 'Other']),
 });
 

@@ -33,7 +33,7 @@ export default function MatchesPage() {
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const response = await fetch('/api/matches');
+        const response = await fetch('/api/v1/matches');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -57,7 +57,7 @@ export default function MatchesPage() {
 
   const handleConnect = async (matchId: string) => {
     try {
-      const response = await fetch('/api/matches', {
+      const response = await fetch('/api/v1/matches', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

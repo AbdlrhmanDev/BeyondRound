@@ -29,6 +29,9 @@
 NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYzNzI4MDAwMCwiZXhwIjoxOTUyODU2MDAwfQ.example
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjM3MjgwMDAwLCJleHAiOjE5NTI4NTYwMDB9.example
+
+# Cron Jobs Secret (for scheduled tasks)
+CRON_SECRET=your-secure-random-string-generate-a-long-random-string
 ```
 
 ### 5️⃣ أعد تشغيل Next.js

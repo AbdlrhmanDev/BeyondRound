@@ -198,3 +198,6 @@ export function PricingModal({ isOpen, onClose, currentPlan, onSelectPlan }: Pri
   );
 }
 
+
+
+

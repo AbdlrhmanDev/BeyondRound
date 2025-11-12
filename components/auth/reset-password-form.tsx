@@ -42,7 +42,7 @@ export function ResetPasswordForm() {
       sessionStorage.setItem('verificationEmail', data.email);
       sessionStorage.setItem('isPasswordReset', 'true');
 
-      await fetch('/api/resend', {
+      await fetch('/api/v1/resend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

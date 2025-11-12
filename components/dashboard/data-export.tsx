@@ -20,7 +20,7 @@ export function DataExport() {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const response = await fetch('/api/data-export');
+      const response = await fetch('/api/v1/data-export');
       if (!response.ok) {
         throw new Error('Failed to export data');
       }

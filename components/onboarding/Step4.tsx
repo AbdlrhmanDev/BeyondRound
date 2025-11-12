@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -84,15 +84,33 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
     },
   });
 
-  // ✅ Watch form values for real-time updates
-  const formValues = form.watch();
+  // ✅ Watch specific form values to prevent infinite loops
+  const musicPreferences = form.watch('musicPreferences');
+  const moviePreferences = form.watch('moviePreferences');
+  const otherInterests = form.watch('otherInterests');
   const formState = form.formState;
+  const prevValuesRef = useRef<string>('');
 
   useEffect(() => {
-    if (formState.isValid && formValues) {
-      onUpdate(formValues);
+    // Only update if form is valid and values have actually changed
+    if (formState.isValid) {
+      const formValues = {
+        musicPreferences: musicPreferences || [],
+        moviePreferences: moviePreferences || [],
+        otherInterests: otherInterests || [],
+      };
+      
+      // Create a string representation to compare
+      const valuesKey = JSON.stringify(formValues);
+      
+      // Only call onUpdate if values have changed
+      if (valuesKey !== prevValuesRef.current) {
+        prevValuesRef.current = valuesKey;
+        onUpdate(formValues);
+      }
     }
-  }, [formValues, formState.isValid, onUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicPreferences, moviePreferences, otherInterests, formState.isValid]);
 
   const onSubmit = (formData: FormData) => {
     onUpdate(formData);

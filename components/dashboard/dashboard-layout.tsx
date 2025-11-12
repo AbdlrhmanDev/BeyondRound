@@ -17,6 +17,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -32,6 +33,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       }
 
       setUser(session.user);
+
+      // Check admin role
+      const { data: adminRole } = await supabase
+        .from('admin_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      setIsAdmin(!!adminRole);
       setIsLoading(false);
     }
 
@@ -174,6 +184,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           label="Profile1"
           isCollapsed={!isSidebarOpen}
         />
+        {isAdmin && (
+          <SidebarItem
+            href="/admin"
+            icon={<ShieldIcon className="h-5 w-5" />}
+            label="Admin"
+            isCollapsed={!isSidebarOpen}
+          />
+        )}
         </nav>
 
         <div className="p-4 border-t border-border">
@@ -442,6 +460,25 @@ function GroupsIcon(props: React.SVGProps<SVGSVGElement>) {
       <circle cx="9" cy="7" r="4"></circle>
       <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
       <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+  );
+}
+
+function ShieldIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   );
 }

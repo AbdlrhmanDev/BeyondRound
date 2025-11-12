@@ -94,7 +94,7 @@ export default function ProfilePage() {
           setUser(session.user);
           
           // Fetch profile data
-          const response = await fetch('/api/profile');
+          const response = await fetch('/api/v1/profile');
           if (response.ok) {
             const data = await response.json();
             setOnboardingData(data.data);
@@ -174,7 +174,9 @@ export default function ProfilePage() {
         },
       };
 
-      const response = await fetch('/api/profile', {
+      console.log('Sending profile data:', completeData);
+      
+      const response = await fetch('/api/v1/profile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +186,10 @@ export default function ProfilePage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save profile data');
+        const errorMessage = errorData.details 
+          ? `${errorData.error}: ${Array.isArray(errorData.details) ? errorData.details.join(', ') : errorData.details}`
+          : errorData.error || 'Failed to save profile data';
+        throw new Error(errorMessage);
       }
 
       setOnboardingData(completeData);

@@ -26,7 +26,7 @@ export function ActivityLog() {
 
   const fetchActivityLog = async () => {
     try {
-      const response = await fetch('/api/activity-log');
+      const response = await fetch('/api/v1/activity-log');
       if (!response.ok) {
         throw new Error('Failed to fetch activity log');
       }

@@ -62,7 +62,7 @@ export default function BillingPage() {
       }
 
       try {
-        const response = await fetch('/api/billing');
+        const response = await fetch('/api/v1/billing');
         if (!response.ok) {
           throw new Error('Failed to fetch billing data');
         }
@@ -116,7 +116,7 @@ export default function BillingPage() {
     setShowCancelDialog(false);
 
     try {
-      const response = await fetch('/api/billing/actions', {
+      const response = await fetch('/api/v1/billing/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'cancel' }),
@@ -128,7 +128,7 @@ export default function BillingPage() {
       }
 
       // Refresh data
-      const billingResponse = await fetch('/api/billing');
+      const billingResponse = await fetch('/api/v1/billing');
       const billingData = await billingResponse.json();
       setSubscription(billingData.subscription);
     } catch (err) {
@@ -143,7 +143,7 @@ export default function BillingPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/billing/actions', {
+      const response = await fetch('/api/v1/billing/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reactivate' }),
@@ -155,7 +155,7 @@ export default function BillingPage() {
       }
 
       // Refresh data
-      const billingResponse = await fetch('/api/billing');
+      const billingResponse = await fetch('/api/v1/billing');
       const billingData = await billingResponse.json();
       setSubscription(billingData.subscription);
     } catch (err) {
@@ -179,7 +179,7 @@ export default function BillingPage() {
       // Calculate period dates
       const now = new Date();
       const periodStart = now.toISOString();
-      let periodEnd = new Date();
+      const periodEnd = new Date();
       
       if (planId === 'annual') {
         periodEnd.setFullYear(periodEnd.getFullYear() + 1);
@@ -187,7 +187,7 @@ export default function BillingPage() {
         periodEnd.setMonth(periodEnd.getMonth() + 1);
       }
 
-      const response = await fetch('/api/billing/actions', {
+      const response = await fetch('/api/v1/billing/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -204,7 +204,7 @@ export default function BillingPage() {
       }
 
       // Refresh data
-      const billingResponse = await fetch('/api/billing');
+      const billingResponse = await fetch('/api/v1/billing');
       const billingData = await billingResponse.json();
       setSubscription(billingData.subscription);
     } catch (err) {
