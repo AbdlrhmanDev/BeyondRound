@@ -9,10 +9,8 @@ import { ActivityList } from '@/components/dashboard/activity-list';
 import { PlaceholderChart } from '@/components/dashboard/placeholder-chart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { createClient } from '@/utils/supabase/client';
 import type { User } from '@supabase/supabase-js';
-import { Clock, Users, Calendar, CheckCircle2 } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -155,78 +153,7 @@ export default function DashboardPage() {
     );
   }
 
-  // ✅ إذا أكمل التسجيل ولكن لا يوجد مجموعات، اعرض حالة الانتظار
-  if (userProfile.is_matchable && userGroups.length === 0) {
-    return (
-      <DashboardLayout>
-        <div className="max-w-3xl mx-auto mt-12 space-y-6">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
-              </div>
-              <CardTitle className="text-2xl">You&apos;re All Set! 🎉</CardTitle>
-              <CardDescription className="text-base mt-2">
-                Your profile is complete and you&apos;re now in the matching queue.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Alert>
-                <Clock className="h-4 w-4" />
-                <AlertDescription className="ml-2">
-                  <strong>Next Matching Round:</strong> Every Thursday at 4:00 PM
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 bg-muted rounded-lg">
-                  <Users className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold mb-1">What Happens Next?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Our matching algorithm will pair you with compatible medical professionals based on your interests, specialty, and preferences.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-4 bg-muted rounded-lg">
-                  <Calendar className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold mb-1">Weekly Matching</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Matches are created every Thursday at 4:00 PM. You&apos;ll receive a notification when your new group is ready!
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-4 bg-muted rounded-lg">
-                  <CheckCircle2 className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold mb-1">Stay Tuned</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Check back after Thursday to see your matches and start connecting with your new group members!
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push('/dashboard/profile')}
-                >
-                  Edit My Profile
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // ✅ إذا كان لديه مجموعات، اعرض Dashboard العادي مع المجموعات
+  // ✅ إذا أكمل التسجيل، اعرض Dashboard الرئيسي مباشرة
   return (
     <DashboardLayout>
       <WelcomeSection
