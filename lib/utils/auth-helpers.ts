@@ -15,7 +15,7 @@ export interface UserLoginInfo {
 }
 
 // Get user login info including redirect path
-export async function getUserLoginInfo(userId: string): Promise<{ data: UserLoginInfo | null; error: any }> {
+export async function getUserLoginInfo(userId: string): Promise<{ data: UserLoginInfo | null; error: Error | null }> {
   const supabase = createClient();
   
   const { data, error } = await supabase

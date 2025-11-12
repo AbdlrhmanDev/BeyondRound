@@ -12,7 +12,6 @@ import {
   Shield,
   Crown,
   Activity,
-  TrendingUp,
   BarChart3,
   Settings,
   Database,
@@ -21,7 +20,6 @@ import {
   CheckCircle2,
   ArrowRight,
   UserPlus,
-  UserX,
   FileText
 } from 'lucide-react';
 import Link from 'next/link';
@@ -136,11 +134,12 @@ export default function SuperAdminDashboard() {
 
         if (rpcError && !isSuper) {
           console.error('Error checking super admin:', rpcError);
+          const errorObj = rpcError as { code?: string; details?: string; hint?: string };
           console.error('Error details:', {
             message: rpcError instanceof Error ? rpcError.message : String(rpcError),
-            code: (rpcError as any)?.code,
-            details: (rpcError as any)?.details,
-            hint: (rpcError as any)?.hint
+            code: errorObj?.code,
+            details: errorObj?.details,
+            hint: errorObj?.hint
           });
         }
         
@@ -218,7 +217,7 @@ export default function SuperAdminDashboard() {
       const unreadNotifications = notificationsRes.data?.filter(n => !n.is_read).length || 0;
       const adminsData = adminsRes.data || [];
       const totalAdmins = adminsRes.count || adminsData.length || 0;
-      const superAdmins = adminsData.filter((a: any) => a.role === 'super_admin').length || 0;
+      const superAdmins = adminsData.filter((a: { role?: string }) => a.role === 'super_admin').length || 0;
       const regularAdmins = totalAdmins - superAdmins;
       const recentSignups = recentUsersRes.data?.length || 0;
 

@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 
 // Return 405 Method Not Allowed since Resend functionality is disabled
-export async function POST(_: NextRequest, __: NextResponse) { // eslint-disable-line @typescript-eslint/no-unused-vars
+export async function POST(_request: NextRequest, _response: NextResponse) {
   return NextResponse.json(
     { error: 'Email functionality is disabled. Enable Resend to use this feature.' },
     { status: 405 }

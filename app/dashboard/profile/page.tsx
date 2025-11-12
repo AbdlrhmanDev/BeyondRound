@@ -303,7 +303,7 @@ export default function ProfilePage() {
       if (session?.user) {
         setUser(session.user);
 
-        const { data: profile, error: profileErr } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', session.user.id)

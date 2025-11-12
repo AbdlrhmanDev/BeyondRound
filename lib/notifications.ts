@@ -15,7 +15,7 @@ interface CreateNotificationParams {
   message: string;
   type?: NotificationType;
   link?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

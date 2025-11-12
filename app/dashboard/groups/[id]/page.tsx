@@ -3,7 +3,6 @@
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
@@ -34,8 +33,8 @@ export default function GroupDetailsPage() {
         }
         const data: Group = await response.json();
         setGroup(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load group');
       } finally {
         setLoading(false);
       }

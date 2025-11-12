@@ -38,11 +38,11 @@ export async function GET(request: Request) {
 
     // Extract groups from the nested structure
     const userGroups = groups
-      ?.map((member: any) => {
+      ?.map((member: { groups: unknown }) => {
         const group = member.groups;
         return Array.isArray(group) ? group[0] : group;
       })
-      .filter((g: any) => g !== null && g !== undefined) || [];
+      .filter((g: unknown) => g !== null && g !== undefined) || [];
 
     return NextResponse.json(userGroups);
   } else {

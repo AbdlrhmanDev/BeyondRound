@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { AlertTriangle, X, Calendar } from 'lucide-react';
+import { AlertTriangle, Calendar } from 'lucide-react';
 
 interface CancelSubscriptionDialogProps {
   isOpen: boolean;

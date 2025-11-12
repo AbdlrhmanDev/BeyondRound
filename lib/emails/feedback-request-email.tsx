@@ -28,7 +28,7 @@ export const FeedbackRequestEmail = ({
         <Container style={container}>
           <Heading style={h1}>How was your weekend?</Heading>
           <Text style={text}>
-            Hi {userEmail}, we hope you had a great weekend! We'd love to get
+            Hi {userEmail}, we hope you had a great weekend! We&apos;d love to get
             your feedback on your recent matches.
           </Text>
           <Section style={buttonContainer}>

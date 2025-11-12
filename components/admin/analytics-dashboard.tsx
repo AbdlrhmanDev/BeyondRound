@@ -10,9 +10,7 @@ import {
   Activity, 
   BarChart3,
   Calendar,
-  Clock,
   CheckCircle2,
-  XCircle,
   ArrowUp,
   ArrowDown
 } from 'lucide-react';

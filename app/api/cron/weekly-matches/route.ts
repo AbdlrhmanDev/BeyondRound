@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // 2. TODO: Implement your matching algorithm here
     // For now, this is a placeholder that groups users in sets of 4
     const GROUP_SIZE = 4;
-    const groups: any[] = [];
+    const groups: Array<{ id: string; name: string; members: string[] }> = [];
 
     for (let i = 0; i < matchableUsers.length; i += GROUP_SIZE) {
       const groupMembers = matchableUsers.slice(i, i + GROUP_SIZE);

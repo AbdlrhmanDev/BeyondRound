@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
     const validatedData = onboardingSchema.parse(body);
 
     // ✅ Update profile
-    const profileUpdateData: Record<string, any> = {
+    const profileUpdateData: Record<string, unknown> = {
       is_onboarding_complete: true,
       is_matchable: true, // ✅ المستخدم جاهز للمطابقة
       updated_at: new Date().toISOString(),

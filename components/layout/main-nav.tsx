@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Menu, X, User, LogIn } from 'lucide-react';
+import { Menu, X, User } from 'lucide-react';
 
 export function MainNav() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { createClient } from '@/utils/supabase/client';
-import { Save, Settings, Database, Shield, Bell, Mail, Globe } from 'lucide-react';
+import { Save, Database, Shield, Bell, Globe } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminSettingsPage() {
