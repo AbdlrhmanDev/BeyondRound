@@ -11,13 +11,28 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/utils/supabase/client';
 import type { User } from '@supabase/supabase-js';
-
 interface Profile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
   is_onboarding_complete: boolean | null;
   is_matchable: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+interface Activity {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
+interface DashboardStats {
+  loginCount: number;
+  lastLogin: string;
+  securityScore: number;
+  accountStatus: string;
 }
 
 interface Group {
@@ -38,7 +53,38 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [userGroups, setUserGroups] = useState<Group[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    loginCount: 0,
+    lastLogin: 'Never',
+    securityScore: 0,
+    accountStatus: 'Inactive',
+  });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Helper function to format time ago
+  function formatTimeAgo(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    
+    // Check if same day
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) return 'Today';
+    
+    // Check if yesterday
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+    if (isYesterday) return 'Yesterday';
+    
+    return date.toLocaleDateString();
+  }
 
   // 1) احصل على الجلسة ثم حمّل البروفايل والمجموعات
   useEffect(() => {
@@ -52,7 +98,7 @@ export default function DashboardPage() {
         // جلب بيانات البروفايل
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, is_onboarding_complete, is_matchable')
+          .select('id, full_name, avatar_url, is_onboarding_complete, is_matchable, created_at, updated_at')
           .eq('id', session.user.id)
           .single();
 
@@ -61,6 +107,64 @@ export default function DashboardPage() {
         } else {
           setUserProfile(profileData as Profile);
         }
+
+        // Get user auth data for last sign in
+        const { data: authUser } = await supabase.auth.getUser();
+        
+        // Calculate stats
+        const lastSignIn = authUser?.user?.last_sign_in_at;
+        const profileCreated = profileData?.created_at;
+        
+        // Fetch notifications for activities
+        const { data: notifications, error: notificationsError } = await supabase
+          .from('notifications')
+          .select('id, title, message, created_at, type')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (!notificationsError && notifications && notifications.length > 0) {
+          const formattedActivities: Activity[] = notifications.map((notif) => ({
+            id: notif.id,
+            title: notif.title || 'Notification',
+            description: notif.message || '',
+            timestamp: formatTimeAgo(notif.created_at),
+          }));
+          setActivities(formattedActivities);
+        } else {
+          // If no notifications, show account creation activity
+          if (profileCreated) {
+            setActivities([
+              {
+                id: 'account-created',
+                title: 'Account Created',
+                description: 'Your account was successfully created',
+                timestamp: formatTimeAgo(profileCreated),
+              },
+            ]);
+          }
+        }
+        
+        // Calculate security score based on profile completeness
+        let securityScore = 0;
+        if (profileData?.is_onboarding_complete) securityScore += 30;
+        if (profileData?.avatar_url) securityScore += 20;
+        if (authUser?.user?.email_confirmed_at) securityScore += 25;
+        if (profileData?.full_name) securityScore += 15;
+        if (profileData?.is_matchable) securityScore += 10;
+
+        // Get login count (estimate from account age or use a simple calculation)
+        const accountAgeDays = profileCreated 
+          ? Math.floor((Date.now() - new Date(profileCreated).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        const loginCount = Math.max(1, Math.floor(accountAgeDays / 7)); // Estimate based on account age
+
+        setStats({
+          loginCount,
+          lastLogin: lastSignIn ? formatTimeAgo(lastSignIn) : 'Never',
+          securityScore,
+          accountStatus: profileData?.is_onboarding_complete ? 'Active' : 'Incomplete',
+        });
 
         // جلب المجموعات التي ينتمي إليها المستخدم
         const { data: groupMemberships, error: membershipsError } = await supabase
@@ -115,13 +219,6 @@ export default function DashboardPage() {
     };
   }, [supabase, user?.id]);
 
-  // بيانات وهمية
-  const mockActivities = [
-    { id: '1', title: 'Account Created', description: 'Your account was successfully created', timestamp: '2 hours ago' },
-    { id: '2', title: 'Email Verified', description: 'Your email address has been verified', timestamp: '1 hour ago' },
-    { id: '3', title: 'Password Updated', description: 'Your password was updated successfully', timestamp: '30 minutes ago' },
-  ];
-
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -159,6 +256,7 @@ export default function DashboardPage() {
       <WelcomeSection
         userName={userProfile?.full_name || 'User'}
         userEmail={user?.email || 'user@example.com'}
+        avatarUrl={userProfile?.avatar_url || null}
       />
 
       {/* عرض المجموعات */}
@@ -196,30 +294,30 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
         <StatsCard
           title="Login Count"
-          value="5"
-          description="Total logins this month"
+          value={stats.loginCount.toString()}
+          description="Estimated logins since account creation"
           icon={<UserIcon className="h-5 w-5" />}
           delay={0.1}
         />
         <StatsCard
           title="Last Login"
-          value="Today"
+          value={stats.lastLogin}
           description="Last accessed the platform"
           icon={<ClockIcon className="h-5 w-5" />}
           delay={0.2}
         />
         <StatsCard
           title="Security Score"
-          value="85%"
+          value={`${stats.securityScore}%`}
           description="Your account security rating"
           icon={<ShieldIcon className="h-5 w-5" />}
-          change={{ value: '10%', positive: true }}
+          change={stats.securityScore >= 80 ? { value: 'Excellent', positive: true } : stats.securityScore >= 60 ? { value: 'Good', positive: true } : undefined}
           delay={0.3}
         />
         <StatsCard
           title="Account Status"
-          value="Active"
-          description="Your account is in good standing"
+          value={stats.accountStatus}
+          description={stats.accountStatus === 'Active' ? 'Your account is in good standing' : 'Complete your profile to activate'}
           icon={<CheckCircleIcon className="h-5 w-5" />}
           delay={0.4}
         />
@@ -239,7 +337,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <ActivityList activities={mockActivities} />
+          <ActivityList activities={activities} />
         </div>
       </div>
 
