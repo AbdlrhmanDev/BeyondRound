@@ -75,6 +75,7 @@ const defaultData: OnboardingData = {
   step8: {
     idealWeekend: 'Mix of active and relaxing',
   },
+  step9: {},
 };
 
 interface Profile {
@@ -235,6 +236,10 @@ export default function ProfilePage() {
         },
         step8: {
           idealWeekend: editingData.step8?.idealWeekend || 'Mix of active and relaxing',
+        },
+        step9: {
+          avatar_url: editingData.step9?.avatar_url,
+          verification_documents: editingData.step9?.verification_documents ?? null,
         },
       };
 
