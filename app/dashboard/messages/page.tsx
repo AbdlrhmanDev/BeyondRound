@@ -40,8 +40,11 @@ export default function MessagesPage() {
           if (membershipsError) throw membershipsError;
 
           const groups = (groupMemberships || [])
-            .map((membership) => membership.groups)
-            .filter((group): group is Group => group !== null && typeof group === 'object' && 'id' in group);
+            .map((membership: { groups: unknown }) => {
+              const group = membership.groups;
+              return Array.isArray(group) ? group[0] : group;
+            })
+            .filter((g): g is Group => g !== null && g !== undefined && typeof g === 'object' && 'id' in g);
           setUserGroups(groups);
 
         } catch (err: unknown) {
