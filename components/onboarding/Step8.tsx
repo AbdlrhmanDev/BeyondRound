@@ -9,16 +9,14 @@ import { onboardingStep8Schema } from '@/lib/utils/validation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Loader2, CheckCircle } from 'lucide-react';
 
 type FormData = z.infer<typeof onboardingStep8Schema>;
 
 interface OnboardingStep8Props {
   data?: FormData;
-  onComplete: (data: FormData) => void;
+  onNext: (data: FormData) => void;
   onPrevious: () => void;
   onUpdate: (data: FormData) => void;
-  isLoading?: boolean;
 }
 
 const IDEAL_WEEKEND_OPTIONS = [
@@ -31,7 +29,7 @@ const IDEAL_WEEKEND_OPTIONS = [
   { value: 'Mix of active and relaxing', label: 'Mix of active and relaxing' },
 ];
 
-export function OnboardingStep8({ data, onComplete, onPrevious, onUpdate, isLoading }: OnboardingStep8Props) {
+export function OnboardingStep8({ data, onNext, onPrevious, onUpdate }: OnboardingStep8Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(onboardingStep8Schema),
     defaultValues: data || {
@@ -54,7 +52,7 @@ export function OnboardingStep8({ data, onComplete, onPrevious, onUpdate, isLoad
 
   const onSubmit = (formData: FormData) => {
     onUpdate(formData);
-    onComplete(formData);
+    onNext(formData);
   };
 
   return (
@@ -83,8 +81,8 @@ export function OnboardingStep8({ data, onComplete, onPrevious, onUpdate, isLoad
                           key={option.value}
                           className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                             field.value === option.value
-                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-400 shadow-md'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md'
+                              : 'border-border hover:border-primary/50 bg-card'
                           }`}
                         >
                           <input
@@ -93,9 +91,8 @@ export function OnboardingStep8({ data, onComplete, onPrevious, onUpdate, isLoad
                             checked={field.value === option.value}
                             onChange={field.onChange}
                             className="sr-only"
-                            disabled={isLoading}
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className="text-sm font-medium">
                             {option.label}
                           </span>
                         </Label>
@@ -107,47 +104,21 @@ export function OnboardingStep8({ data, onComplete, onPrevious, onUpdate, isLoad
               )}
             />
 
-            {/* ✅ Completion message */}
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-green-900 dark:text-green-100">
-                    You&apos;re almost there!
-                  </h4>
-                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                    Once you complete this step, we&apos;ll create your profile and start finding perfect matches for you.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             <div className="flex justify-between">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={onPrevious}
-                disabled={isLoading}
                 className="hover:scale-105 transition-transform duration-200"
               >
                 Previous
               </Button>
               <Button 
                 type="submit" 
-                disabled={!formState.isValid || isLoading}
-                className="px-8 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!formState.isValid}
+                className="px-8"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Completing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Complete Profile
-                  </>
-                )}
+                Continue
               </Button>
             </div>
           </form>

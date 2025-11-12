@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { OnboardingData } from '@/types/onboarding';
@@ -27,7 +27,13 @@ import {
   X,
   Plus,
   Trash2,
-  Star
+  Star,
+  CheckCircle,
+  FileText,
+  Shield,
+  Download,
+  Upload,
+  Loader2
 } from 'lucide-react';
 
 // Default data structure for when no profile data exists
@@ -71,14 +77,43 @@ const defaultData: OnboardingData = {
   },
 };
 
+interface Profile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
+interface Verification {
+  user_id: string;
+  medical_license_verified: boolean;
+  photo_verified: boolean;
+  email_verified: boolean;
+  verification_documents: {
+    medical_license?: {
+      path: string;
+      name: string;
+      type: string;
+      size: number;
+      uploaded_at?: string;
+    };
+  } | null;
+  verified_at: string | null;
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
+  const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [verification, setVerification] = useState<Verification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingData, setEditingData] = useState<OnboardingData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingLicense, setUploadingLicense] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const licenseInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function getUserAndData() {
@@ -93,7 +128,36 @@ export default function ProfilePage() {
         if (session?.user) {
           setUser(session.user);
           
-          // Fetch profile data
+          // Fetch profile data with avatar
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+          } else {
+            setUserProfile(profileData as Profile);
+          }
+
+          // Fetch verification data
+          const { data: verificationData, error: verificationError } = await supabase
+            .from('verifications')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (verificationError) {
+            // It's okay if verification doesn't exist yet
+            if (verificationError.code !== 'PGRST116') {
+              console.error('Error fetching verification:', verificationError);
+            }
+          } else {
+            setVerification(verificationData as Verification);
+          }
+          
+          // Fetch onboarding profile data
           const response = await fetch('/api/v1/profile');
           if (response.ok) {
             const data = await response.json();
@@ -237,6 +301,279 @@ export default function ProfilePage() {
     }
   };
 
+  // Avatar CRUD handlers
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || 'Failed to upload avatar');
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      if (urlData?.publicUrl) {
+        // Update profile with new avatar URL
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: urlData.publicUrl })
+          .eq('id', user.id);
+
+        if (updateError) {
+          throw new Error(updateError.message || 'Failed to update profile');
+        }
+
+        // Update local state
+        setUserProfile(prev => prev ? { ...prev, avatar_url: urlData.publicUrl } : null);
+      } else {
+        throw new Error('Failed to get public URL');
+      }
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload avatar');
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    if (!user?.id || !userProfile?.avatar_url) return;
+
+    if (!confirm('Are you sure you want to delete your profile picture?')) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      
+      // Extract file path from URL
+      const urlParts = userProfile.avatar_url.split('/');
+      const filePath = urlParts.slice(urlParts.indexOf('avatars') + 1).join('/');
+
+      // Delete from storage
+      const { error: deleteError } = await supabase.storage
+        .from('avatars')
+        .remove([filePath]);
+
+      if (deleteError) {
+        console.error('Error deleting avatar from storage:', deleteError);
+        // Continue to update profile even if storage delete fails
+      }
+
+      // Update profile to remove avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user.id);
+
+      if (updateError) {
+        throw new Error(updateError.message || 'Failed to update profile');
+      }
+
+      // Update local state
+      setUserProfile(prev => prev ? { ...prev, avatar_url: null } : null);
+    } catch (err) {
+      console.error('Error deleting avatar:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete avatar');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // Medical License CRUD handlers
+  const handleLicenseUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    // Validate file type (PDF or image)
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a PDF or image file (JPEG, PNG)');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB');
+      return;
+    }
+
+    setUploadingLicense(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/license-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('verifications')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || 'Failed to upload license document');
+      }
+
+      // Update verification document in database
+      const verificationDoc = {
+        medical_license: {
+          path: filePath,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          uploaded_at: new Date().toISOString(),
+        },
+      };
+
+      // Check if verification record exists
+      const { data: existingVerification } = await supabase
+        .from('verifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingVerification) {
+        // Update existing verification
+        const { error: updateError } = await supabase
+          .from('verifications')
+          .update({
+            verification_documents: verificationDoc,
+            medical_license_verified: false, // Reset verification status when new document is uploaded
+          })
+          .eq('user_id', user.id);
+
+        if (updateError) {
+          throw new Error(updateError.message || 'Failed to update verification');
+        }
+      } else {
+        // Create new verification record
+        const { error: insertError } = await supabase
+          .from('verifications')
+          .insert({
+            user_id: user.id,
+            verification_documents: verificationDoc,
+            medical_license_verified: false,
+          });
+
+        if (insertError) {
+          throw new Error(insertError.message || 'Failed to create verification');
+        }
+      }
+
+      // Refresh verification data
+      const { data: verificationData } = await supabase
+        .from('verifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (verificationData) {
+        setVerification(verificationData as Verification);
+      }
+    } catch (err) {
+      console.error('Error uploading license:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload license document');
+    } finally {
+      setUploadingLicense(false);
+      if (licenseInputRef.current) {
+        licenseInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteLicense = async () => {
+    if (!user?.id || !verification?.verification_documents?.medical_license) return;
+
+    if (!confirm('Are you sure you want to delete your medical license document?')) {
+      return;
+    }
+
+    setUploadingLicense(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      
+      const filePath = verification.verification_documents.medical_license.path;
+
+      // Delete from storage
+      const { error: deleteError } = await supabase.storage
+        .from('verifications')
+        .remove([filePath]);
+
+      if (deleteError) {
+        console.error('Error deleting license from storage:', deleteError);
+        // Continue to update verification even if storage delete fails
+      }
+
+      // Update verification to remove document
+      const { error: updateError } = await supabase
+        .from('verifications')
+        .update({
+          verification_documents: null,
+          medical_license_verified: false,
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        throw new Error(updateError.message || 'Failed to update verification');
+      }
+
+      // Update local state
+      setVerification(prev => prev ? {
+        ...prev,
+        verification_documents: null,
+        medical_license_verified: false,
+      } : null);
+    } catch (err) {
+      console.error('Error deleting license:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete license document');
+    } finally {
+      setUploadingLicense(false);
+    }
+  };
+
   const updateSportInterest = (index: number, field: 'sport' | 'interest', value: string | number) => {
     if (!editingData?.step3?.sports) return;
     
@@ -323,6 +660,7 @@ export default function ProfilePage() {
         <WelcomeSection
           userName={data?.step1?.city ? `${data.step1.city} Resident` : 'User'}
           userEmail={user?.email || 'user@example.com'}
+          avatarUrl={userProfile?.avatar_url || null}
         />
         <div className="flex gap-2">
           {!isEditing ? (
@@ -353,6 +691,277 @@ export default function ProfilePage() {
           <p className="text-destructive text-sm">{error}</p>
         </div>
       )}
+
+      {/* Profile & Verification Card */}
+      <div className="mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Profile & Verification
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Avatar Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold">Profile Picture</h3>
+                {userProfile?.avatar_url ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={userProfile.avatar_url}
+                        alt="Profile avatar"
+                        className="w-24 h-24 rounded-full border-2 border-primary/20 object-cover"
+                      />
+                      <div>
+                        <Badge variant="outline" className="mb-2">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Uploaded
+                        </Badge>
+                        <p className="text-xs text-muted-foreground">
+                          Your profile picture is visible to other users
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                        id="avatar-upload"
+                        disabled={uploadingAvatar}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingAvatar}
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="flex items-center gap-2"
+                      >
+                        {uploadingAvatar ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-3 w-3" />
+                            Change
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={uploadingAvatar}
+                        onClick={handleDeleteAvatar}
+                        className="flex items-center gap-2"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 h-24 rounded-full border-2 border-dashed border-border bg-card flex items-center justify-center">
+                        <span className="text-3xl font-semibold text-muted-foreground">
+                          {userProfile?.full_name?.charAt(0).toUpperCase() || data?.step1?.city?.charAt(0).toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                      <div>
+                        <Badge variant="secondary" className="mb-2">
+                          <X className="h-3 w-3 mr-1" />
+                          Not Uploaded
+                        </Badge>
+                        <p className="text-xs text-muted-foreground">
+                          Add a profile picture to help others recognize you
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                        id="avatar-upload"
+                        disabled={uploadingAvatar}
+                      />
+                      <Button
+                        variant="default"
+                        size="sm"
+                        disabled={uploadingAvatar}
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="flex items-center gap-2"
+                      >
+                        {uploadingAvatar ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-3 w-3" />
+                            Upload Avatar
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Medical License Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold">Medical License</h3>
+                {verification?.verification_documents?.medical_license ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                      <FileText className="h-8 w-8 text-primary" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          {verification.verification_documents.medical_license.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Uploaded {verification.verification_documents.medical_license.uploaded_at 
+                            ? new Date(verification.verification_documents.medical_license.uploaded_at).toLocaleDateString()
+                            : 'recently'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {verification.medical_license_verified ? (
+                        <Badge className="bg-green-500 hover:bg-green-600">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <X className="h-3 w-3 mr-1" />
+                          Pending Review
+                        </Badge>
+                      )}
+                      {verification.verification_documents.medical_license.path && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const supabase = createClient();
+                              const { data: urlData, error: urlError } = await supabase.storage
+                                .from('verifications')
+                                .createSignedUrl(verification.verification_documents!.medical_license!.path, 3600);
+                              if (urlError) {
+                                console.error('Error creating signed URL:', urlError);
+                                return;
+                              }
+                              if (urlData?.signedUrl) {
+                                window.open(urlData.signedUrl, '_blank');
+                              }
+                            }}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                          <input
+                            ref={licenseInputRef}
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/jpg,image/png"
+                            onChange={handleLicenseUpload}
+                            className="hidden"
+                            id="license-upload"
+                            disabled={uploadingLicense}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingLicense}
+                            onClick={() => licenseInputRef.current?.click()}
+                            className="flex items-center gap-2"
+                          >
+                            {uploadingLicense ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-3 w-3" />
+                                Change
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={uploadingLicense}
+                            onClick={handleDeleteLicense}
+                            className="flex items-center gap-2"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-4 border-2 border-dashed border-border rounded-lg bg-card">
+                      <FileText className="h-8 w-8 text-muted-foreground" />
+                      <div>
+                        <Badge variant="secondary" className="mb-2">
+                          <X className="h-3 w-3 mr-1" />
+                          Not Uploaded
+                        </Badge>
+                        <p className="text-xs text-muted-foreground">
+                          Upload your medical license for verification
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <input
+                        ref={licenseInputRef}
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/jpg,image/png"
+                        onChange={handleLicenseUpload}
+                        className="hidden"
+                        id="license-upload"
+                        disabled={uploadingLicense}
+                      />
+                      <Button
+                        variant="default"
+                        size="sm"
+                        disabled={uploadingLicense}
+                        onClick={() => licenseInputRef.current?.click()}
+                        className="flex items-center gap-2"
+                      >
+                        {uploadingLicense ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-3 w-3" />
+                            Upload License
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Profile Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

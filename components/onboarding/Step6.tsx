@@ -114,8 +114,8 @@ export function OnboardingStep6({ data, onNext, onPrevious, onUpdate }: Onboardi
                           key={time}
                           className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                             field.value?.includes(time)
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md'
+                              : 'border-border hover:border-primary/50 bg-card'
                           }`}
                         >
                           <input
@@ -124,7 +124,7 @@ export function OnboardingStep6({ data, onNext, onPrevious, onUpdate }: Onboardi
                             onChange={(e) => handleMeetingTimeChange(time, e.target.checked)}
                             className="sr-only"
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className="text-sm font-medium">
                             {time}
                           </span>
                         </Label>
@@ -132,7 +132,7 @@ export function OnboardingStep6({ data, onNext, onPrevious, onUpdate }: Onboardi
                     </div>
                   </FormControl>
                   {timesCount > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    <p className="text-xs text-primary mt-2">
                       Selected: {timesCount} {timesCount === 1 ? 'time slot' : 'time slots'}
                     </p>
                   )}
@@ -156,8 +156,8 @@ export function OnboardingStep6({ data, onNext, onPrevious, onUpdate }: Onboardi
                           key={option.value}
                           className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                             field.value === option.value
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md'
+                              : 'border-border hover:border-primary/50 bg-card'
                           }`}
                         >
                           <input
@@ -167,7 +167,7 @@ export function OnboardingStep6({ data, onNext, onPrevious, onUpdate }: Onboardi
                             onChange={field.onChange}
                             className="sr-only"
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className="text-sm font-medium">
                             {option.label}
                           </span>
                         </Label>
@@ -191,7 +191,7 @@ export function OnboardingStep6({ data, onNext, onPrevious, onUpdate }: Onboardi
               <Button 
                 type="submit" 
                 disabled={!formState.isValid}
-                className="px-8 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-8"
               >
                 Continue
               </Button>

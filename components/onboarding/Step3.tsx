@@ -136,58 +136,80 @@ export function OnboardingStep3({ data, onNext, onPrevious, onUpdate }: Onboardi
                 <FormItem>
                   <FormLabel>
                     Sports You Enjoy (optional)
-                    <span className="text-xs text-gray-500 ml-2">
-                      Rate your interest level 1-5
+                    <span className="text-xs text-muted-foreground ml-2">
+                      Click to select, then rate your interest 1-5
                     </span>
                   </FormLabel>
                   <FormControl>
-                    <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto p-1">
+                    <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto p-1">
                       {SPORTS_OPTIONS.map((sport) => {
                         const interest = getSportInterest(sport);
                         return (
-                          <div key={sport} className="space-y-2">
-                            <Label className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                          <div
+                            key={sport}
+                            className={`group relative border rounded-lg transition-all duration-200 ${
                               interest > 0
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
-                            }`}>
-                              <input
-                                type="checkbox"
-                                checked={interest > 0}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    handleSportChange(sport, 3); // Default to 3
-                                  } else {
-                                    removeSport(sport);
+                                ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md ring-2 ring-primary/20'
+                                : 'border-border hover:border-primary/50 bg-card'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between p-3">
+                              <Label
+                                className="flex items-center flex-1 cursor-pointer"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (interest === 0) {
+                                    handleSportChange(sport, 3);
                                   }
                                 }}
-                                className="sr-only"
-                              />
-                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {sport}
-                              </span>
-                            </Label>
-                            {interest > 0 && (
-                              <div className="flex items-center space-x-2 px-3">
-                                <span className="text-xs text-gray-600 dark:text-gray-400">
-                                  Interest:
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={interest > 0}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      handleSportChange(sport, 3);
+                                    } else {
+                                      removeSport(sport);
+                                    }
+                                  }}
+                                  className="sr-only"
+                                />
+                                <span className={`text-sm font-medium ${interest > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                  {sport}
                                 </span>
-                                <div className="flex space-x-1">
-                                  {[1, 2, 3, 4, 5].map((rating) => (
-                                    <button
-                                      key={rating}
-                                      type="button"
-                                      onClick={() => handleSportChange(sport, rating)}
-                                      className={`w-6 h-6 rounded-full text-xs font-medium transition-all duration-200 hover:scale-110 ${
-                                        rating <= interest
-                                          ? 'bg-blue-500 text-white shadow-md'
-                                          : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
-                                      }`}
-                                    >
-                                      {rating}
-                                    </button>
-                                  ))}
+                              </Label>
+                              
+                              {interest > 0 && (
+                                <div className="flex items-center gap-1 ml-3">
+                                  <span className="text-xs text-muted-foreground mr-1">Interest:</span>
+                                  <div className="flex items-center gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((rating) => (
+                                      <button
+                                        key={rating}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSportChange(sport, rating);
+                                        }}
+                                        className={`w-7 h-7 rounded-md text-xs font-semibold transition-all duration-200 hover:scale-110 ${
+                                          rating <= interest
+                                            ? 'bg-primary text-primary-foreground shadow-sm'
+                                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                        }`}
+                                        title={`Rate ${rating} out of 5`}
+                                      >
+                                        {rating}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
+                              )}
+                            </div>
+                            
+                            {interest === 0 && (
+                              <div className="absolute inset-0 flex items-center justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-xs text-muted-foreground">Click to add</span>
                               </div>
                             )}
                           </div>
@@ -196,7 +218,7 @@ export function OnboardingStep3({ data, onNext, onPrevious, onUpdate }: Onboardi
                     </div>
                   </FormControl>
                   {selectedSportsCount > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    <p className="text-xs text-primary mt-2">
                       Selected: {selectedSportsCount} {selectedSportsCount === 1 ? 'sport' : 'sports'}
                     </p>
                   )}
@@ -211,17 +233,17 @@ export function OnboardingStep3({ data, onNext, onPrevious, onUpdate }: Onboardi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Activity Level <span className="text-red-500">*</span>
+                    Activity Level <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <div className="space-y-2">
                       {ACTIVITY_LEVEL_OPTIONS.map((option) => (
                         <Label
                           key={option.value}
-                          className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                          className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm ${
                             field.value === option.value
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md ring-2 ring-primary/20'
+                              : 'border-border hover:border-primary/50 bg-card'
                           }`}
                         >
                           <input
@@ -231,7 +253,7 @@ export function OnboardingStep3({ data, onNext, onPrevious, onUpdate }: Onboardi
                             onChange={field.onChange}
                             className="sr-only"
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className="text-sm font-medium">
                             {option.label}
                           </span>
                         </Label>
@@ -255,7 +277,7 @@ export function OnboardingStep3({ data, onNext, onPrevious, onUpdate }: Onboardi
               <Button 
                 type="submit" 
                 disabled={!formState.isValid}
-                className="px-8 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-8"
               >
                 Continue
               </Button>

@@ -55,6 +55,19 @@ export type OnboardingStep8Data = {
   idealWeekend: 'Adventure and exploration' | 'Relaxation and self-care' | 'Social activities with friends' | 'Cultural activities (museums, shows)' | 'Sports and fitness' | 'Home projects and hobbies' | 'Mix of active and relaxing';
 };
 
+export type OnboardingStep9Data = {
+  avatar_url?: string;
+  verification_documents?: {
+    medical_license?: {
+      path: string;
+      name: string;
+      type: string;
+      size: number;
+      uploaded_at?: string;
+    };
+  } | null;
+};
+
 // Component prop types
 export interface OnboardingStep1Props {
   data?: OnboardingStep1Data;
@@ -107,10 +120,17 @@ export interface OnboardingStep7Props {
 // ✅ Updated Step8 Props
 export interface OnboardingStep8Props {
   data?: OnboardingStep8Data;
-  onComplete: (data: OnboardingStep8Data) => void; // ✅ Now accepts data
+  onNext: (data: OnboardingStep8Data) => void;
   onPrevious: () => void;
   onUpdate: (data: OnboardingStep8Data) => void;
-  isLoading?: boolean; // ✅ Made optional
+}
+
+export interface OnboardingStep9Props {
+  data?: OnboardingStep9Data;
+  onComplete: (data: OnboardingStep9Data) => void;
+  onPrevious: () => void;
+  onUpdate: (data: OnboardingStep9Data) => void;
+  isLoading?: boolean;
 }
 
 // API response types
@@ -175,7 +195,8 @@ export type OnboardingStepData =
   | OnboardingStep5Data 
   | OnboardingStep6Data 
   | OnboardingStep7Data 
-  | OnboardingStep8Data;
+  | OnboardingStep8Data
+  | OnboardingStep9Data;
 
 export type OnboardingStepProps = 
   | OnboardingStep1Props 
@@ -185,4 +206,5 @@ export type OnboardingStepProps =
   | OnboardingStep5Props 
   | OnboardingStep6Props 
   | OnboardingStep7Props 
-  | OnboardingStep8Props;
+  | OnboardingStep8Props
+  | OnboardingStep9Props;

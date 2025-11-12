@@ -13,8 +13,15 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+interface Profile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -33,6 +40,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       }
 
       setUser(session.user);
+
+      // Fetch user profile with avatar
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      } else {
+        setUserProfile(profileData as Profile);
+      }
 
       // Check admin role
       const { data: adminRole } = await supabase
@@ -63,6 +83,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               const newTheme = (payload.new as { theme: string }).theme;
               document.body.classList.remove('light', 'dark');
               document.body.classList.add(newTheme);
+              
+              // Update profile if it's the current user's profile
+              if (user?.id && (payload.new as { id: string }).id === user.id) {
+                setUserProfile(payload.new as Profile);
+              }
             }
           }
         )
@@ -78,7 +103,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         })();
       }
     };
-  }, [])
+  }, [user?.id])
 
   async function handleSignOut() {
     try {
@@ -212,14 +237,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
           <div className="flex items-center">
             <h1 className="text-xl font-semibold">
-              Welcome, <span className="text-primary">{user?.user_metadata?.full_name}</span>
+              Welcome, <span className="text-primary">{userProfile?.full_name || user?.user_metadata?.full_name || 'User'}</span>
             </h1>
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-              {user?.user_metadata?.full_name?.charAt(0).toUpperCase()}
-            </div>
+            <Link href="/dashboard/profile1" className="cursor-pointer">
+              {userProfile?.avatar_url ? (
+                <img
+                  src={userProfile.avatar_url}
+                  alt="Profile avatar"
+                  className="h-10 w-10 rounded-full border-2 border-primary/20 object-cover hover:border-primary/40 transition-colors"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors">
+                  {(userProfile?.full_name || user?.user_metadata?.full_name)?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
+            </Link>
           </div>
         </header>
 

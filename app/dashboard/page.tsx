@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout';
 import { WelcomeSection } from '@/components/dashboard/welcome-section';
@@ -54,16 +54,31 @@ export default function DashboardPage() {
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [rawStats, setRawStats] = useState<{
+    loginCount: number;
+    lastLoginRaw: string | null;
+    securityScore: number;
+    accountStatus: string;
+  } | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
     loginCount: 0,
     lastLogin: 'Never',
     securityScore: 0,
     accountStatus: 'Inactive',
   });
+  const [rawActivities, setRawActivities] = useState<Array<{
+    id: string;
+    title: string;
+    description: string;
+    created_at: string;
+  }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Helper function to format time ago
-  function formatTimeAgo(dateString: string): string {
+  // Helper function to format time ago (client-side only)
+  const formatTimeAgo = useCallback((dateString: string): string => {
+    if (!isMounted) return 'Loading...'; // Prevent hydration mismatch
+    
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -84,7 +99,37 @@ export default function DashboardPage() {
     if (isYesterday) return 'Yesterday';
     
     return date.toLocaleDateString();
-  }
+  }, [isMounted]);
+
+  // Set mounted state after hydration
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Format dates only after component is mounted (client-side only)
+  useEffect(() => {
+    if (!isMounted || !rawStats) return;
+
+    setStats({
+      loginCount: rawStats.loginCount,
+      lastLogin: rawStats.lastLoginRaw ? formatTimeAgo(rawStats.lastLoginRaw) : 'Never',
+      securityScore: rawStats.securityScore,
+      accountStatus: rawStats.accountStatus,
+    });
+  }, [isMounted, rawStats, formatTimeAgo]);
+
+  // Format activities only after component is mounted
+  useEffect(() => {
+    if (!isMounted || rawActivities.length === 0) return;
+
+    const formattedActivities: Activity[] = rawActivities.map((activity) => ({
+      id: activity.id,
+      title: activity.title,
+      description: activity.description,
+      timestamp: formatTimeAgo(activity.created_at),
+    }));
+    setActivities(formattedActivities);
+  }, [isMounted, rawActivities, formatTimeAgo]);
 
   // 1) احصل على الجلسة ثم حمّل البروفايل والمجموعات
   useEffect(() => {
@@ -123,28 +168,6 @@ export default function DashboardPage() {
           .order('created_at', { ascending: false })
           .limit(5);
 
-        if (!notificationsError && notifications && notifications.length > 0) {
-          const formattedActivities: Activity[] = notifications.map((notif) => ({
-            id: notif.id,
-            title: notif.title || 'Notification',
-            description: notif.message || '',
-            timestamp: formatTimeAgo(notif.created_at),
-          }));
-          setActivities(formattedActivities);
-        } else {
-          // If no notifications, show account creation activity
-          if (profileCreated) {
-            setActivities([
-              {
-                id: 'account-created',
-                title: 'Account Created',
-                description: 'Your account was successfully created',
-                timestamp: formatTimeAgo(profileCreated),
-              },
-            ]);
-          }
-        }
-        
         // Calculate security score based on profile completeness
         let securityScore = 0;
         if (profileData?.is_onboarding_complete) securityScore += 30;
@@ -159,12 +182,35 @@ export default function DashboardPage() {
           : 0;
         const loginCount = Math.max(1, Math.floor(accountAgeDays / 7)); // Estimate based on account age
 
-        setStats({
+        // Store raw data first (without date formatting to avoid hydration mismatch)
+        setRawStats({
           loginCount,
-          lastLogin: lastSignIn ? formatTimeAgo(lastSignIn) : 'Never',
+          lastLoginRaw: lastSignIn || null,
           securityScore,
           accountStatus: profileData?.is_onboarding_complete ? 'Active' : 'Incomplete',
         });
+
+        // Store raw activities data
+        if (!notificationsError && notifications && notifications.length > 0) {
+          setRawActivities(notifications.map((notif) => ({
+            id: notif.id,
+            title: notif.title || 'Notification',
+            description: notif.message || '',
+            created_at: notif.created_at,
+          })));
+        } else {
+          // If no notifications, show account creation activity
+          if (profileCreated) {
+            setRawActivities([
+              {
+                id: 'account-created',
+                title: 'Account Created',
+                description: 'Your account was successfully created',
+                created_at: profileCreated,
+              },
+            ]);
+          }
+        }
 
         // جلب المجموعات التي ينتمي إليها المستخدم
         const { data: groupMemberships, error: membershipsError } = await supabase

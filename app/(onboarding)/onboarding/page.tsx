@@ -342,6 +342,7 @@ import { OnboardingStep5 } from '@/components/onboarding/Step5';
 import { OnboardingStep6 } from '@/components/onboarding/Step6';
 import { OnboardingStep7 } from '@/components/onboarding/Step7';
 import { OnboardingStep8 } from '@/components/onboarding/Step8';
+import { OnboardingStep9 } from '@/components/onboarding/Step9';
 
 const STEPS = [
   { id: 1, title: 'Basic Info', description: 'Tell us about yourself', required: true },
@@ -352,6 +353,7 @@ const STEPS = [
   { id: 6, title: 'Availability', description: "When you're available to meet", required: true },
   { id: 7, title: 'Lifestyle & Values', description: "Your lifestyle and what you're looking for", required: true },
   { id: 8, title: 'Personality', description: 'Describe your ideal weekend', required: false },
+  { id: 9, title: 'Profile & Verification', description: 'Upload your profile picture and medical license', required: false },
 ];
 
 export default function OnboardingPage() {
@@ -551,6 +553,14 @@ export default function OnboardingPage() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data={stepData as any}
           onUpdate={onUpdate}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+        />;
+      case 9:
+        return <OnboardingStep9 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data={stepData as any}
+          onUpdate={onUpdate}
           onComplete={handleComplete}
           onPrevious={handlePrevious}
           isLoading={isLoading}
@@ -561,23 +571,23 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
+    <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Progress Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-bold">
               Complete Your Profile
             </h1>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-muted-foreground">
                 Step {currentStep} of {STEPS.length}
               </span>
               {completedSteps.has(currentStep) && (
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-primary" />
               )}
               {Object.keys(onboardingData).length > 0 && (
-                <div className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400">
+                <div className="flex items-center space-x-1 text-xs text-primary">
                   <Save className="h-3 w-3" />
                   <span>Saved</span>
                 </div>
@@ -586,13 +596,13 @@ export default function OnboardingPage() {
           </div>
           <Progress value={progress} className="h-2" />
           <div className="mt-4">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+            <h2 className="text-lg font-semibold">
               {STEPS[currentStep - 1].title}
               {STEPS[currentStep - 1].required && (
-                <span className="text-red-500 ml-1">*</span>
+                <span className="text-destructive ml-1">*</span>
               )}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               {STEPS[currentStep - 1].description}
             </p>
           </div>
@@ -652,10 +662,10 @@ export default function OnboardingPage() {
                 disabled={!completedSteps.has(step.id) && step.id > currentStep}
                 className={`w-2 h-2 rounded-full transition-all duration-200 ${
                   step.id === currentStep
-                    ? 'bg-blue-500 scale-125'
+                    ? 'bg-primary scale-125'
                     : completedSteps.has(step.id)
-                    ? 'bg-green-500 cursor-pointer hover:scale-110'
-                    : 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                    ? 'bg-primary/60 cursor-pointer hover:scale-110'
+                    : 'bg-muted cursor-not-allowed'
                 }`}
                 title={`${step.title}${step.required ? ' (Required)' : ''}`}
               />

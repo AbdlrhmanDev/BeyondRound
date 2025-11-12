@@ -97,6 +97,19 @@ export const onboardingStep8Schema = z.object({
   idealWeekend: z.enum(['Adventure and exploration', 'Relaxation and self-care', 'Social activities with friends', 'Cultural activities (museums, shows)', 'Sports and fitness', 'Home projects and hobbies', 'Mix of active and relaxing']),
 });
 
+export const onboardingStep9Schema = z.object({
+  avatar_url: z.string().optional(),
+  verification_documents: z.object({
+    medical_license: z.object({
+      path: z.string(),
+      name: z.string(),
+      type: z.string(),
+      size: z.number(),
+      uploaded_at: z.string().optional(),
+    }).optional(),
+  }).nullable().optional(),
+});
+
 export const onboardingSchema = z.object({
   step1: onboardingStep1Schema,
   step2: onboardingStep2Schema,
@@ -106,4 +119,5 @@ export const onboardingSchema = z.object({
   step6: onboardingStep6Schema,
   step7: onboardingStep7Schema,
   step8: onboardingStep8Schema,
+  step9: onboardingStep9Schema,
 });

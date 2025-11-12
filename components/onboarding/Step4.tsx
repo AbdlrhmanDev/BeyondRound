@@ -148,7 +148,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="musicPreferences"
@@ -158,14 +158,14 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                     Music Preferences (optional)
                   </FormLabel>
                   <FormControl>
-                    <div className="grid grid-cols-3 gap-3 max-h-40 overflow-y-auto p-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-1">
                       {MUSIC_PREFERENCES.map((preference) => (
                         <Label
                           key={preference}
-                          className={`flex items-center space-x-2 p-2 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                          className={`group flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm ${
                             field.value?.includes(preference)
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md ring-2 ring-primary/20'
+                              : 'border-border hover:border-primary/50 bg-card'
                           }`}
                         >
                           <input
@@ -174,7 +174,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                             onChange={(e) => handleMultiSelectChange('musicPreferences', preference, e.target.checked)}
                             className="sr-only"
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className={`text-sm font-medium text-center ${field.value?.includes(preference) ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {preference}
                           </span>
                         </Label>
@@ -182,7 +182,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                     </div>
                   </FormControl>
                   {musicCount > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    <p className="text-xs text-primary mt-2">
                       Selected: {musicCount} {musicCount === 1 ? 'genre' : 'genres'}
                     </p>
                   )}
@@ -200,14 +200,14 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                     Movies & TV Shows (optional)
                   </FormLabel>
                   <FormControl>
-                    <div className="grid grid-cols-3 gap-3 max-h-40 overflow-y-auto p-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-1">
                       {MOVIE_PREFERENCES.map((preference) => (
                         <Label
                           key={preference}
-                          className={`flex items-center space-x-2 p-2 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                          className={`group flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm ${
                             field.value?.includes(preference)
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md ring-2 ring-primary/20'
+                              : 'border-border hover:border-primary/50 bg-card'
                           }`}
                         >
                           <input
@@ -216,7 +216,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                             onChange={(e) => handleMultiSelectChange('moviePreferences', preference, e.target.checked)}
                             className="sr-only"
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className={`text-sm font-medium text-center ${field.value?.includes(preference) ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {preference}
                           </span>
                         </Label>
@@ -224,7 +224,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                     </div>
                   </FormControl>
                   {movieCount > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    <p className="text-xs text-primary mt-2">
                       Selected: {movieCount} {movieCount === 1 ? 'preference' : 'preferences'}
                     </p>
                   )}
@@ -242,14 +242,14 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                     Other Interests (optional)
                   </FormLabel>
                   <FormControl>
-                    <div className="grid grid-cols-3 gap-3 max-h-40 overflow-y-auto p-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-1">
                       {OTHER_INTERESTS.map((interest) => (
                         <Label
                           key={interest}
-                          className={`flex items-center space-x-2 p-2 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                          className={`group flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm ${
                             field.value?.includes(interest)
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md ring-2 ring-primary/20'
+                              : 'border-border hover:border-primary/50 bg-card'
                           }`}
                         >
                           <input
@@ -258,7 +258,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                             onChange={(e) => handleMultiSelectChange('otherInterests', interest, e.target.checked)}
                             className="sr-only"
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className={`text-sm font-medium text-center ${field.value?.includes(interest) ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {interest}
                           </span>
                         </Label>
@@ -266,7 +266,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
                     </div>
                   </FormControl>
                   {interestsCount > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    <p className="text-xs text-primary mt-2">
                       Selected: {interestsCount} {interestsCount === 1 ? 'interest' : 'interests'}
                     </p>
                   )}
@@ -287,7 +287,7 @@ export function OnboardingStep4({ data, onNext, onPrevious, onUpdate }: Onboardi
               <Button 
                 type="submit" 
                 disabled={!formState.isValid}
-                className="px-8 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-8"
               >
                 Continue
               </Button>

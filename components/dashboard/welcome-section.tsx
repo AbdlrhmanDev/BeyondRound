@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 interface WelcomeSectionProps {
   userName?: string | null;
   userEmail?: string | null;
+  avatarUrl?: string | null;
   loading?: boolean;
   // إمّا تستخدم روابط جاهزة...
   viewProfileHref?: string;
@@ -20,6 +21,7 @@ interface WelcomeSectionProps {
 export function WelcomeSection({
   userName,
   userEmail,
+  avatarUrl,
   loading = false,
   viewProfileHref,
   completeSetupHref,
@@ -60,13 +62,30 @@ export function WelcomeSection({
       <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-none">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                Welcome back, {displayName}!
-              </h2>
-              <p className="text-muted-foreground mt-1">
-                Here&apos;s what&apos;s happening with your account today.
-              </p>
+            <div className="flex items-center gap-4">
+              {avatarUrl ? (
+                <div className="relative">
+                  <img
+                    src={avatarUrl}
+                    alt={`${displayName}'s avatar`}
+                    className="w-16 h-16 rounded-full border-2 border-primary/20 object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center">
+                  <span className="text-2xl font-semibold text-primary">
+                    {displayName.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  Welcome back, {displayName}!
+                </h2>
+                <p className="text-muted-foreground mt-1">
+                  Here&apos;s what&apos;s happening with your account today.
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-2">
