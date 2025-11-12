@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // 2. TODO: Implement your matching algorithm here
     // For now, this is a placeholder that groups users in sets of 4
     const GROUP_SIZE = 4;
-    const groups: Array<{ id: string; name: string; members: string[] }> = [];
+    const groups: Array<{ id?: string; name: string; description: string; members: string[] }> = [];
 
     for (let i = 0; i < matchableUsers.length; i += GROUP_SIZE) {
       const groupMembers = matchableUsers.slice(i, i + GROUP_SIZE);
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         groups.push({
           name: `Group ${groups.length + 1} - ${new Date().toLocaleDateString()}`,
           description: `Matched on ${new Date().toLocaleDateString()}`,
-          members: groupMembers.map(u => u.user_id),
+          members: groupMembers.map(u => u.id),
         });
       }
     }
