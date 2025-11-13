@@ -500,7 +500,16 @@ export default function AdminUsersPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Use void to explicitly handle the promise and prevent unhandled rejections
+                void Promise.resolve(confirmDelete()).catch((error) => {
+                  console.error('Unhandled error in confirmDelete onClick:', error);
+                  setError('An unexpected error occurred while deleting the user.');
+                  setIsDeleting(false);
+                });
+              }}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

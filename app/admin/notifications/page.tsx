@@ -121,6 +121,7 @@ export default function AdminNotificationsPage() {
       setIsLoading(false);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error loading notifications:', error);
       setError(`Failed to load notifications: ${errorMessage}`);
       setNotifications([]);
       setTotalCount(0);
@@ -145,6 +146,8 @@ export default function AdminNotificationsPage() {
     if (!notificationToDelete) return;
 
     setIsDeleting(true);
+    setError(null);
+    
     try {
       // Delete from underlying notifications table
       const { error: deleteError } = await supabase
@@ -157,11 +160,17 @@ export default function AdminNotificationsPage() {
       setSuccess('Notification deleted successfully');
       setIsDeleteDialogOpen(false);
       setNotificationToDelete(null);
-      loadNotifications();
       
+      // Reload notifications
+      await loadNotifications();
+      
+      // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to delete notification');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete notification';
+      console.error('Error deleting notification:', error);
+      setError(errorMessage);
+      // Don't re-throw - just set error state
     } finally {
       setIsDeleting(false);
     }
@@ -450,7 +459,16 @@ export default function AdminNotificationsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                // Call confirmDelete - all error handling is inside the function
+                confirmDelete().catch((error) => {
+                  // Safety net for any unexpected errors
+                  console.error('Unexpected error in confirmDelete:', error);
+                  setError('An unexpected error occurred');
+                  setIsDeleting(false);
+                });
+              }}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -462,4 +480,3 @@ export default function AdminNotificationsPage() {
     </AdminLayout>
   );
 }
-

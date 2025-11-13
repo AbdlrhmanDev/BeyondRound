@@ -11,12 +11,11 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { login, getUserLoginInfo, getUserRedirectPath } from '@/lib/utils/auth-helpers';
+import { loginAction } from '@/app/auth/login/actions';
 import { loginSchema } from '@/lib/utils/validation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -26,7 +25,6 @@ type FormData = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const form = useForm<FormData>({
     resolver: zodResolver(loginSchema),
@@ -41,31 +39,13 @@ export function LoginForm() {
     setError(null);
 
     try {
-      // 1. Login with Supabase
-      const authData = await login(data.email, data.password);
+      const result = await loginAction(data.email, data.password);
       
-      if (!authData.user) {
-        throw new Error('Login failed - no user data returned');
+      // إذا كان هناك خطأ، عرضه
+      if (result?.error) {
+        setError(result.error);
       }
-
-      // 2. Get user login info and redirect path
-      const { data: userInfo, error: userError } = await getUserLoginInfo(authData.user.id);
-      
-      if (userError) {
-        console.error('Failed to get user info:', userError);
-        // Fallback: try to get redirect path via RPC
-        const redirectPath = await getUserRedirectPath(authData.user.id);
-        router.push(redirectPath);
-        return;
-      }
-
-      // 3. Redirect based on user type
-      if (userInfo) {
-        router.push(userInfo.redirect_path);
-      } else {
-        // Fallback redirect
-        router.push('/dashboard');
-      }
+      // إذا لم يكن هناك خطأ، redirect سيتم تلقائياً من Server Action
     } catch (error) {
       setError(
         error instanceof Error ? error.message : 'Invalid email or password'

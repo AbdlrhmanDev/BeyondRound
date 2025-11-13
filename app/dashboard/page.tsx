@@ -140,6 +140,19 @@ export default function DashboardPage() {
       if (session?.user) {
         setUser(session.user);
 
+        // تحقق من admin role - إذا كان admin، وجهه إلى admin dashboard
+        const { data: adminRole } = await supabase
+          .from('admin_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (adminRole) {
+          console.log('User is admin, redirecting to /admin/dashboard');
+          router.push('/admin/dashboard');
+          return;
+        }
+
         // جلب بيانات البروفايل
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')

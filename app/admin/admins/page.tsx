@@ -79,6 +79,12 @@ export default function AdminAdminsPage() {
     user_id: '',
     role: 'admin',
   });
+  const [availableUsers, setAvailableUsers] = useState<Array<{
+    id: string;
+    email: string;
+    full_name: string;
+  }>>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   // Check super admin access on mount
   useEffect(() => {
@@ -136,6 +142,83 @@ export default function AdminAdminsPage() {
       isMounted = false;
     };
   }, [supabase]);
+
+  // Load available users when dialog opens
+  useEffect(() => {
+    async function loadAvailableUsers() {
+      // فقط حمّل إذا كان الـ dialog مفتوح وليس في وضع التعديل
+      if (!isFormOpen || selectedAdmin) {
+        return;
+      }
+      
+      setIsLoadingUsers(true);
+      try {
+        // Try RPC function first
+        const { data: users, error: rpcError } = await supabase
+          .rpc('get_users_for_admin_assignment');
+
+        if (rpcError) {
+          console.warn('RPC function not available, using fallback:', rpcError);
+          // Fallback: Get all users from profiles
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, email, full_name')
+            .order('full_name', { ascending: true });
+
+          if (profilesError) {
+            console.error('Error loading users:', profilesError);
+            setAvailableUsers([]);
+            return;
+          }
+
+          // Get all admin user IDs
+          const { data: admins } = await supabase
+            .from('admin_roles')
+            .select('user_id');
+
+          const adminUserIds = new Set(admins?.map(a => a.user_id) || []);
+
+          // Filter out users who are already admins
+          const nonAdminUsers = (profiles || [])
+            .filter(user => !adminUserIds.has(user.id))
+            .map(user => ({
+              id: user.id,
+              email: user.email || '',
+              full_name: user.full_name || '',
+            }));
+
+          setAvailableUsers(nonAdminUsers);
+          return;
+        }
+
+        // If RPC function exists and returned data
+        if (users) {
+          // Filter users who aren't admins yet
+          interface RPCUser {
+            id: string;
+            email?: string;
+            full_name?: string;
+            is_admin?: boolean;
+          }
+          const nonAdminUsers = (users as RPCUser[] || []).filter((user) => !user.is_admin);
+          setAvailableUsers(nonAdminUsers.map((user) => ({
+            id: user.id,
+            email: user.email || '',
+            full_name: user.full_name || '',
+          })));
+        } else {
+          setAvailableUsers([]);
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+        setAvailableUsers([]);
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    }
+
+    loadAvailableUsers();
+  }, [isFormOpen, selectedAdmin, supabase]);
 
   const loadAdmins = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -428,7 +511,7 @@ export default function AdminAdminsPage() {
     
     // Validate form data
     if (!selectedAdmin && !formData.user_id?.trim()) {
-      setFormError('User ID is required');
+      setFormError('Please select a user');
       return;
     }
 
@@ -483,30 +566,34 @@ export default function AdminAdminsPage() {
           }, 3000);
         }
       } else {
-        // Create new admin
-        const { error: insertError } = await supabase
-          .from('admin_roles')
-          .insert({
-            user_id: formData.user_id.trim(),
-            role: formData.role,
+        // Create new admin using RPC function
+        const { data: result, error: rpcError } = await supabase
+          .rpc('create_admin_role', {
+            p_user_id: formData.user_id.trim(),
+            p_role: formData.role,
           });
 
-        if (insertError) {
-          const errorDetails = {
-            message: insertError.message || 'Unknown error',
-            code: insertError.code || 'UNKNOWN',
-            hint: insertError.hint || null
-          };
-          console.error('Error creating admin role:', errorDetails);
-          
-          // Check for permission denied error
-          if (insertError.code === '42501' || insertError.message?.includes('permission denied')) {
-            throw new Error('Permission denied. Make sure you are a Super Admin and the migration has been applied.');
-          } else {
-            throw new Error(insertError.message || insertError.hint || 'Failed to create admin role');
-          }
+        if (rpcError) {
+          console.error('RPC error creating admin:', rpcError);
+          throw new Error(rpcError.message || 'Failed to create admin role');
         }
-        
+
+        // Check the result from RPC function
+        if (!result) {
+          throw new Error('No response from server');
+        }
+
+        // Parse result (it's a JSON object)
+        if (typeof result === 'object' && 'success' in result) {
+          if (!result.success) {
+            const errorMsg = result.error || 'Failed to create admin role';
+            console.error('Create admin failed:', errorMsg);
+            throw new Error(errorMsg);
+          }
+          
+          console.log('Admin created successfully:', result);
+        }
+
         if (isMountedRef.current) {
           setSuccess('Admin role created successfully');
           setIsFormOpen(false);
@@ -536,84 +623,81 @@ export default function AdminAdminsPage() {
   };
 
   const confirmDelete = async () => {
+    if (!adminToDelete) return;
+
+    setIsDeleting(true);
+    setError(null); // Clear any previous errors
+    setFormError(null);
+    
     try {
-      if (!adminToDelete || !adminToDelete.id) {
-        console.error('Cannot delete: invalid admin data');
-        if (isMountedRef.current) {
-          setError('Invalid admin data. Cannot delete.');
+      // Check if user is super admin
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data: isSuper, error: checkError } = await supabase.rpc('is_super_admin', {
+        p_user_id: user.id
+      });
+
+      if (checkError) {
+        throw new Error(checkError.message);
+      }
+
+      if (!isSuper) {
+        throw new Error('Permission denied. Make sure you are a Super Admin and the migration has been applied.');
+      }
+
+      // Delete from admin_roles table using RPC function to bypass RLS issues
+      let deleted = false;
+      let deleteError = null;
+
+      // Try RPC function first (recommended - bypasses RLS)
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_admin_role', {
+        p_admin_role_id: adminToDelete.id
+      });
+
+      if (rpcError) {
+        console.warn('RPC delete failed, trying direct delete:', rpcError);
+        // Fallback to direct delete if RPC function doesn't exist
+        const { error: directDeleteError } = await supabase
+          .from('admin_roles')
+          .delete()
+          .eq('id', adminToDelete.id);
+
+        if (directDeleteError) {
+          deleteError = directDeleteError;
+        } else {
+          deleted = true;
         }
-        return;
+      } else {
+        deleted = rpcResult === true;
       }
-
-      if (!isMountedRef.current) return;
-
-      setIsDeleting(true);
-      setError(null);
-      setFormError(null);
-      
-      // Validate adminToDelete before deletion
-      const adminId = adminToDelete.id;
-      if (!adminId || typeof adminId !== 'string') {
-        throw new Error('Invalid admin ID');
-      }
-
-      const { error: deleteError } = await supabase
-        .from('admin_roles')
-        .delete()
-        .eq('id', adminId);
 
       if (deleteError) {
-        const errorDetails = {
-          message: deleteError.message || 'Unknown error',
-          code: deleteError.code || 'UNKNOWN',
-          hint: deleteError.hint || null
-        };
-        console.error('Error deleting admin role:', errorDetails);
-        
-        if (isMountedRef.current) {
-          // Check for permission denied error
-          if (deleteError.code === '42501' || deleteError.message?.includes('permission denied')) {
-            setError('Permission denied. Make sure you are a Super Admin and the migration has been applied.');
-          } else {
-            setError(deleteError.message || deleteError.hint || 'Failed to delete admin role');
-          }
-        }
-        return;
+        throw new Error(deleteError.message || 'Failed to delete admin role');
       }
 
-      // Success - only update state if component is still mounted
-      if (!isMountedRef.current) return;
+      if (!deleted) {
+        throw new Error('Failed to delete admin role. The role may not exist or you may not have permission.');
+      }
 
-      setSuccess('Admin role deleted successfully');
+      setSuccess('Admin role removed successfully');
       setIsDeleteDialogOpen(false);
       setAdminToDelete(null);
       
-      // Reload admins list - wrap in try-catch to prevent errors from breaking the flow
-      try {
-        await loadAdmins();
-      } catch (loadError) {
-        console.error('Error reloading admins after delete:', loadError);
-        // Don't throw - deletion was successful, just reload failed
-      }
+      // Reload admins list
+      await loadAdmins();
       
       // Clear success message after 3 seconds
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          setSuccess(null);
-        }
-      }, 3000);
+      setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
-      console.error('Error in confirmDelete:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Failed to delete admin';
-      
-      if (isMountedRef.current) {
-        setError(errorMsg);
-      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete admin role';
+      console.error('Error deleting admin role:', error);
+      setError(errorMessage);
+      // DON'T re-throw - just set error state
     } finally {
-      // Always ensure loading state is cleared, regardless of success or error
-      if (isMountedRef.current) {
-        setIsDeleting(false);
-      }
+      setIsDeleting(false);
     }
   };
 
@@ -913,22 +997,70 @@ export default function AdminAdminsPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="user_id">User ID</Label>
-              <Input
-                id="user_id"
-                type="text"
-                value={formData.user_id || ''}
-                onChange={(e) => {
-                  const value = e.target.value || '';
-                  setFormData({ ...formData, user_id: value });
-                }}
-                placeholder="Enter user UUID"
-                disabled={!!selectedAdmin}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                {selectedAdmin ? 'User ID cannot be changed' : 'The UUID of the user to make admin'}
-              </p>
+              <Label htmlFor="user_id">User</Label>
+              
+              {selectedAdmin ? (
+                // إذا كنت تعدل admin موجود، اعرض معلوماته فقط
+                <div className="rounded-md border border-input bg-muted px-3 py-2">
+                  <div className="font-medium">
+                    {selectedAdmin.user_full_name || 'No name'}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedAdmin.user_email || selectedAdmin.user_id}
+                  </div>
+                </div>
+              ) : (
+                // إذا كنت تضيف admin جديد، اعرض Select
+                <>
+                  <Select
+                    value={formData.user_id || ''}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, user_id: value });
+                      setFormError(null);
+                    }}
+                    disabled={isLoadingUsers}
+                  >
+                    <SelectTrigger id="user_id">
+                      <SelectValue placeholder={
+                        isLoadingUsers 
+                          ? "Loading users..." 
+                          : availableUsers.length === 0
+                          ? "No users available"
+                          : "Select a user to make admin"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {isLoadingUsers ? (
+                        <div className="flex items-center justify-center py-6">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        </div>
+                      ) : availableUsers.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                          No users available
+                        </div>
+                      ) : (
+                        availableUsers.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            <div className="flex flex-col py-1">
+                              <span className="font-medium">
+                                {user.full_name || 'No name'}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {user.email}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    Select a user to grant admin privileges
+                    {availableUsers.length > 0 && ` (${availableUsers.length} available)`}
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -965,7 +1097,7 @@ export default function AdminAdminsPage() {
               <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSaving}>
+              <Button type="submit" disabled={isSaving || (!selectedAdmin && !formData.user_id)}>
                 {isSaving ? 'Saving...' : selectedAdmin ? 'Update' : 'Create'}
               </Button>
             </DialogFooter>
@@ -999,18 +1131,13 @@ export default function AdminAdminsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
-                e.stopPropagation();
-                try {
-                  await confirmDelete();
-                } catch (error) {
-                  console.error('Unhandled error in confirmDelete onClick:', error);
-                  if (isMountedRef.current) {
-                    setError('An unexpected error occurred while deleting the admin role.');
-                    setIsDeleting(false);
-                  }
-                }
+                confirmDelete().catch((error) => {
+                  console.error('Unexpected error in confirmDelete:', error);
+                  setError('An unexpected error occurred');
+                  setIsDeleting(false);
+                });
               }}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -1023,4 +1150,3 @@ export default function AdminAdminsPage() {
     </AdminLayout>
   );
 }
-

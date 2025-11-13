@@ -55,8 +55,9 @@ export async function GET() {
 
   const { data: matches, error: matchesError } = await supabase
     .from('matches')
-    .select('id, user1_id, user2_id, status, viewed_by_user1, viewed_by_user2')
-    .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+    .select('id, user1_id, user2_id, status, viewed_by_user1, viewed_by_user2, created_at')
+    .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+    .order('created_at', { ascending: false });
 
   if (matchesError) {
     console.error(matchesError);

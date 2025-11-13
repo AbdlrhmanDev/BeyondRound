@@ -86,11 +86,16 @@ export async function updateSession(request: NextRequest) {
           .from('admin_roles')
           .select('role')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
       ]);
 
       profile = profileRes.data;
       adminRole = adminRoleRes.data;
+
+      // Log errors if any
+      if (adminRoleRes.error) {
+        console.error('Error checking admin role:', adminRoleRes.error);
+      }
 
       // Cache the results
       userCache.set(user.id, {
@@ -107,7 +112,7 @@ export async function updateSession(request: NextRequest) {
     if (isAuthRoute && !isNewPasswordPage && (request.nextUrl.pathname === '/auth/login' || request.nextUrl.pathname === '/auth/register')) {
       // User is already logged in, redirect based on status
       if (isAdmin) {
-        return NextResponse.redirect(new URL('/admin', request.url));
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
       }
       if (!isOnboardingComplete) {
         return NextResponse.redirect(new URL('/onboarding', request.url));
@@ -116,12 +121,26 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Admin users should go to admin panel
-    if (isAdmin && !isAdminRoute && !isAuthRoute) {
-      return NextResponse.redirect(new URL('/admin', request.url));
+    // إذا كان admin وحاول الوصول لـ /dashboard فقط (ليس /admin)
+    if (isAdmin && request.nextUrl.pathname === '/dashboard') {
+      console.log('✅ Redirecting admin to /admin/dashboard');
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    }
+
+    // إذا كان admin وفي أي صفحة dashboard فرعية
+    if (isAdmin && isDashboardRoute && request.nextUrl.pathname !== '/admin/dashboard') {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    }
+
+    // إذا كان admin وفي أي صفحة غير admin (عدا auth و home و onboarding)، وجهه إلى admin/dashboard
+    if (isAdmin && !isAdminRoute && !isAuthRoute && !isHomePage && !isOnboardingPage) {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }
 
     // Non-admin users shouldn't access admin routes
+    // إذا لم يكن admin وحاول الوصول لصفحات admin
     if (!isAdmin && isAdminRoute) {
+      console.log('❌ Redirecting non-admin to /dashboard');
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
@@ -137,8 +156,9 @@ export async function updateSession(request: NextRequest) {
 
     // Admin users shouldn't stay on onboarding page
     if (isAdmin && isOnboardingPage) {
-      return NextResponse.redirect(new URL('/admin', request.url));
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }
+    
   }
 
   return supabaseResponse;

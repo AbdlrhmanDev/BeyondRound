@@ -14,6 +14,11 @@ import { createClient } from '@/utils/supabase/client';
 interface Match {
   id: string;
   status: string;
+  user1_id: string;
+  user2_id: string;
+  viewed_by_user1: boolean;
+  viewed_by_user2: boolean;
+  created_at: string;
   profile: {
     id: string;
     full_name: string;
@@ -21,7 +26,7 @@ interface Match {
     city: string;
     nationality: string;
     bio: string;
-  };
+  } | null;
 }
 
 export default function MatchesPage() {
@@ -29,10 +34,18 @@ export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMatches = async () => {
       try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          setCurrentUserId(user.id);
+        }
+
         const response = await fetch('/api/v1/matches');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -49,11 +62,33 @@ export default function MatchesPage() {
     fetchMatches();
   }, []);
 
-  const filteredMatches = matches.filter(match =>
-    match.profile.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    match.profile.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    match.profile.bio.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Check if a match has been viewed by the current user
+  const isMatchViewed = (match: Match): boolean => {
+    if (!currentUserId) return false;
+    if (match.user1_id === currentUserId) {
+      return match.viewed_by_user1;
+    }
+    if (match.user2_id === currentUserId) {
+      return match.viewed_by_user2;
+    }
+    return false;
+  };
+
+  // Filter matches based on search term
+  const filterMatches = (matchesToFilter: Match[]) => {
+    return matchesToFilter.filter(match => {
+      if (!match.profile) return false;
+      return (
+        match.profile.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        match.profile.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (match.profile.bio && match.profile.bio.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    });
+  };
+
+  // Separate matches into new (unviewed) and last (viewed)
+  const newMatches = filterMatches(matches.filter(match => !isMatchViewed(match) && match.profile));
+  const lastMatches = filterMatches(matches.filter(match => isMatchViewed(match) && match.profile));
 
   const handleConnect = async (matchId: string) => {
     try {
@@ -98,7 +133,7 @@ export default function MatchesPage() {
 
       // Get the match to find the other user
       const match = matches.find(m => m.id === matchId);
-      if (!match) {
+      if (!match || !match.profile) {
         alert('Match not found');
         return;
       }
@@ -191,26 +226,29 @@ export default function MatchesPage() {
         </div>
 
         <Tabs defaultValue="new">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="new">New Matches</TabsTrigger>
-            <TabsTrigger value="recommended">Recommended</TabsTrigger>
-            <TabsTrigger value="favorites">Favorites</TabsTrigger>
+            <TabsTrigger value="last">Last Matches</TabsTrigger>
           </TabsList>
           <TabsContent value="new">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
-              {filteredMatches.length > 0 ? (
-                filteredMatches.map((match) => (
+              {newMatches.length > 0 ? (
+                newMatches.map((match) => (
                   <Card key={match.id}>
                     <CardHeader className="items-center">
                       <Avatar className="w-20 h-20">
-                        <AvatarImage src={match.profile.avatar_url || 'https://github.com/shadcn.png'} alt={match.profile.full_name} />
-                        <AvatarFallback>{match.profile.full_name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={match.profile?.avatar_url || 'https://github.com/shadcn.png'} alt={match.profile?.full_name || 'User'} />
+                        <AvatarFallback>{(match.profile?.full_name || 'U').charAt(0)}</AvatarFallback>
                       </Avatar>
                     </CardHeader>
                     <CardContent className="text-center">
-                      <p className="font-semibold">{match.profile.full_name}</p>
-                      <p className="text-sm text-muted-foreground">{match.profile.city}, {match.profile.nationality}</p>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{match.profile.bio}</p>
+                      <p className="font-semibold">{match.profile?.full_name || 'Unknown'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {match.profile?.city || ''}{match.profile?.city && match.profile?.nationality ? ', ' : ''}{match.profile?.nationality || ''}
+                      </p>
+                      {match.profile?.bio && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{match.profile.bio}</p>
+                      )}
                       <div className="mt-4 flex justify-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleConnect(match.id)}>
                           <UserPlus className="mr-2 h-4 w-4" />
@@ -225,15 +263,46 @@ export default function MatchesPage() {
                   </Card>
                 ))
               ) : (
-                <p className="col-span-full text-center text-muted-foreground">No matches found.</p>
+                <p className="col-span-full text-center text-muted-foreground">No new matches found.</p>
               )}
             </div>
           </TabsContent>
-          <TabsContent value="recommended">
-            <p className="col-span-full text-center text-muted-foreground mt-6">No recommended matches yet.</p>
-          </TabsContent>
-          <TabsContent value="favorites">
-            <p className="col-span-full text-center text-muted-foreground mt-6">No favorite matches yet.</p>
+          <TabsContent value="last">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
+              {lastMatches.length > 0 ? (
+                lastMatches.map((match) => (
+                  <Card key={match.id}>
+                    <CardHeader className="items-center">
+                      <Avatar className="w-20 h-20">
+                        <AvatarImage src={match.profile?.avatar_url || 'https://github.com/shadcn.png'} alt={match.profile?.full_name || 'User'} />
+                        <AvatarFallback>{(match.profile?.full_name || 'U').charAt(0)}</AvatarFallback>
+                      </Avatar>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      <p className="font-semibold">{match.profile?.full_name || 'Unknown'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {match.profile?.city || ''}{match.profile?.city && match.profile?.nationality ? ', ' : ''}{match.profile?.nationality || ''}
+                      </p>
+                      {match.profile?.bio && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{match.profile.bio}</p>
+                      )}
+                      <div className="mt-4 flex justify-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleConnect(match.id)}>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Connect
+                        </Button>
+                        <Button size="sm" onClick={() => handleMessage(match.id)}>
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Message
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <p className="col-span-full text-center text-muted-foreground">No last matches found.</p>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
